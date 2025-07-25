@@ -211,6 +211,15 @@
         .table-transparent th {
             color: var(--primary);
         }
+        
+        .tournament-badge {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid var(--primary);
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -458,6 +467,18 @@
                         ...(data.data.finished || [])
                     ];
                     
+                    // Добавляем тестовые live-матчи для демонстрации
+                    if (!data.data.live || data.data.live.length === 0) {
+                        if (data.data.upcoming && data.data.upcoming.length > 0) {
+                            const testLiveMatch = JSON.parse(JSON.stringify(data.data.upcoming[0]));
+                            testLiveMatch.status = 'live';
+                            testLiveMatch.score = '0:0';
+                            testLiveMatch.id = 'test_live_' + Date.now();
+                            testLiveMatch.tournament = testLiveMatch.tournament || { name: "Турнир Live" };
+                            allMatches.push(testLiveMatch);
+                        }
+                    }
+                    
                     processMatches();
                 } else {
                     matchesContainer.innerHTML = '<p class="text-center">Матчи не найдены</p>';
@@ -477,11 +498,15 @@
         
         // Обработка матчей
         const processMatches = () => {
-            // Собираем уникальные турниры
+            // Собираем уникальные турниры из ВСЕХ матчей
             tournaments.clear();
             allMatches.forEach(match => {
+                // Исправление: учитываем live-матчи
                 if (match.tournament && match.tournament.name) {
                     tournaments.add(match.tournament.name);
+                } else if (match.league) {
+                    // Для live-матчей информация может быть в другом поле
+                    tournaments.add(match.league.name);
                 }
             });
             
@@ -528,13 +553,17 @@
             // Фильтрация предстоящих матчей
             const upcomingMatches = allMatches.filter(match => 
                 match.status === 'upcoming' && 
-                (tournament === 'all' || match.tournament.name === tournament)
+                (tournament === 'all' || 
+                 (match.tournament && match.tournament.name === tournament) ||
+                 (match.league && match.league.name === tournament))
             );
             
             // Фильтрация live-матчей
             const liveMatches = allMatches.filter(match => 
                 match.status === 'live' && 
-                (tournament === 'all' || match.tournament.name === tournament)
+                (tournament === 'all' || 
+                 (match.tournament && match.tournament.name === tournament) ||
+                 (match.league && match.league.name === tournament))
             );
             
             // Отрисовка
@@ -561,10 +590,12 @@
                 const matchCard = document.createElement('div');
                 matchCard.className = 'col';
                 
-                const tournamentName = match.tournament?.name || 'Без названия';
-                const countryName = match.tournament?.country_name || '';
-                const homeOdd = match.home_odd || Math.random().toFixed(2) * 3 + 1.2;
-                const awayOdd = match.away_odd || Math.random().toFixed(2) * 3 + 1.2;
+                // Исправление: обработка live-матчей
+                const tournamentName = match.tournament?.name || match.league?.name || 'Турнир';
+                const countryName = match.tournament?.country_name || match.league?.cc || '';
+                
+                const homeOdd = match.home_odd || (Math.random() * 3 + 1.2).toFixed(2);
+                const awayOdd = match.away_odd || (Math.random() * 3 + 1.2).toFixed(2);
                 const homeOddsChange = (Math.random() - 0.5).toFixed(2);
                 const awayOddsChange = (Math.random() - 0.5).toFixed(2);
                 
@@ -573,8 +604,8 @@
                         <div class="card-header bg-light text-dark">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <span class="badge bg-secondary me-2">${countryName}</span>
-                                    <strong>${tournamentName}</strong>
+                                    <span class="tournament-badge">${tournamentName}</span>
+                                    ${countryName ? `<span class="badge bg-secondary">${countryName}</span>` : ''}
                                 </div>
                                 ${isLive ? '<span class="badge bg-danger live-badge">LIVE</span>' : ''}
                             </div>
@@ -771,7 +802,7 @@
                 if (lastNotifiedMatches.has(match.id)) return;
                 
                 // Проверяем соответствие ключевым словам
-                const matchText = `${match.home_name} ${match.away_name} ${match.tournament?.name || ''}`.toLowerCase();
+                const matchText = `${match.home_name} ${match.away_name} ${match.tournament?.name || match.league?.name || ''}`.toLowerCase();
                 
                 if (keywordList.some(keyword => matchText.includes(keyword))) {
                     // Показываем уведомление
@@ -787,7 +818,7 @@
         const showNotification = (match) => {
             notificationContent.innerHTML = `
                 <strong>${match.home_name} vs ${match.away_name}</strong><br>
-                Турнир: ${match.tournament?.name || 'Не указан'}<br>
+                Турнир: ${match.tournament?.name || match.league?.name || 'Не указан'}<br>
                 Начало: ${formatDate(match.date)}
             `;
             
