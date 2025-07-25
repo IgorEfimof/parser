@@ -3,80 +3,436 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Парсинг данных настольного тенниса</title>
+    <title>Продвинутый парсер настольного тенниса</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #f8f9fa;
+            --dark: #212529;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            background-attachment: fixed;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            border-color: var(--primary);
+        }
+        
+        .header-gradient {
+            background: linear-gradient(90deg, #1a2980, #26d0ce);
+            padding: 2rem 0;
+            border-radius: 0 0 30px 30px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
         .match-card {
-            transition: transform 0.2s;
+            height: 100%;
         }
-        .match-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
+        
         .loader {
             width: 50px;
             height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
+            border: 5px solid rgba(243, 243, 243, 0.3);
+            border-top: 5px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 20px auto;
             display: none;
         }
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .nav-tabs .nav-link {
+            color: rgba(255, 255, 255, 0.7);
+            border: none;
+            font-weight: 600;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary);
+            background: transparent;
+            border-bottom: 3px solid var(--primary);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(100px);
+            transition: all 0.5s ease;
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .tournament-logo {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            object-fit: contain;
+        }
+        
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+        
+        .odds-change {
+            font-size: 0.85rem;
+            margin-left: 5px;
+        }
+        
+        .up {
+            color: var(--success);
+        }
+        
+        .down {
+            color: var(--danger);
+        }
+        
+        .progress {
+            height: 8px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .progress-bar {
+            background: var(--primary);
+        }
+        
+        .chart-container {
+            height: 250px;
+            margin-top: 20px;
+        }
+        
+        .live-badge {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+        }
+        
+        .settings-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-control, .form-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .section-title {
+            border-left: 4px solid var(--primary);
+            padding-left: 15px;
+            margin: 25px 0 15px;
+        }
+        
+        .toast {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+        }
+        
+        .table-transparent {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .table-transparent th {
+            color: var(--primary);
+        }
     </style>
 </head>
 <body>
-    <div class="container py-4">
-        <h1 class="text-center mb-4">Матчи по настольному теннису</h1>
-        <div class="d-flex justify-content-between mb-3">
-            <button id="refreshBtn" class="btn btn-primary">
-                Обновить данные
-            </button>
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="autoRefresh">
-                <label class="form-check-label" for="autoRefresh">Автообновление (60 сек)</label>
-            </div>
-        </div>
-        
-        <div class="loader" id="loader"></div>
-        <div id="matchesContainer" class="row row-cols-1 row-cols-md-2 g-4"></div>
-        
-        <div class="mt-5">
-            <h3>Как это работает?</h3>
-            <ul>
-                <li>Данные парсятся с oddspedia.com через прокси-сервер</li>
-                <li>Обновляется каждые 60 секунд (при включенном автообновлении)</li>
-                <li>Отображаются ближайшие матчи и коэффициенты</li>
-            </ul>
-            <div class="alert alert-warning mt-3">
-                <strong>Внимание:</strong> Этот парсер предназначен для образовательных целей.
-                Всегда проверяйте правила использования данных на oddspedia.com.
+    <div class="header-gradient">
+        <div class="container py-4">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-table-tennis-paddle-ball"></i> Продвинутый парсер настольного тенниса</h1>
+                    <p class="lead">Актуальные данные, коэффициенты и статистика матчей</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <img src="https://cdn.oddspedia.com/images/logo/table-tennis.svg" alt="Логотип" height="60">
+                </div>
             </div>
         </div>
     </div>
 
+    <div class="container py-4">
+        <!-- Панель настроек -->
+        <div class="settings-panel">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Фильтр по турнирам</label>
+                    <select class="form-select" id="tournamentFilter">
+                        <option value="all">Все турниры</option>
+                        <!-- Турниры будут добавлены динамически -->
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Статус матчей</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="all">Все матчи</option>
+                        <option value="upcoming">Предстоящие</option>
+                        <option value="live">Live</option>
+                        <option value="finished">Завершенные</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Уведомления (через запятую)</label>
+                    <input type="text" class="form-control" id="notificationKeywords" placeholder="Например: Китай, Германия, Чемпионат">
+                </div>
+                <div class="col-md-2 d-flex align-items-end mb-3">
+                    <button id="refreshBtn" class="btn btn-primary w-100">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <ul class="nav nav-tabs" id="matchesTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab">Предстоящие</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="live-tab" data-bs-toggle="tab" data-bs-target="#live" type="button" role="tab">Live-матчи</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button" role="tab">Статистика</button>
+                </li>
+            </ul>
+            
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                <label class="form-check-label" for="autoRefresh">Автообновление</label>
+            </div>
+        </div>
+        
+        <div class="loader" id="loader"></div>
+        
+        <div class="tab-content" id="matchesTabContent">
+            <!-- Вкладка предстоящих матчей -->
+            <div class="tab-pane fade show active" id="upcoming" role="tabpanel">
+                <div id="matchesContainer" class="row row-cols-1 row-cols-md-2 g-4"></div>
+            </div>
+            
+            <!-- Вкладка live-матчей -->
+            <div class="tab-pane fade" id="live" role="tabpanel">
+                <div id="liveMatchesContainer" class="row row-cols-1 row-cols-md-2 g-4"></div>
+            </div>
+            
+            <!-- Вкладка статистики -->
+            <div class="tab-pane fade" id="stats" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h3 class="section-title">Топ игроки</h3>
+                        <div class="table-responsive">
+                            <table class="table table-transparent">
+                                <thead>
+                                    <tr>
+                                        <th>Игрок</th>
+                                        <th>Страна</th>
+                                        <th>Рейтинг</th>
+                                        <th>Победы</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topPlayers">
+                                    <!-- Данные будут добавлены динамически -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h3 class="section-title">Распределение матчей</h3>
+                        <div class="chart-container">
+                            <canvas id="matchesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Уведомление -->
+        <div class="notification">
+            <div class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-warning">
+                    <strong class="me-auto"><i class="fas fa-bell"></i> Новый матч!</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body" id="notificationContent">
+                    Уведомление о матче
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для детальной статистики -->
+    <div class="modal fade" id="matchDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="matchDetailTitle">Детали матча</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 text-center">
+                            <img src="https://via.placeholder.com/100" class="player-avatar mb-2" id="player1Avatar">
+                            <h4 id="player1Name">Игрок 1</h4>
+                            <div class="odds-value display-4 fw-bold" id="player1Odds">2.10</div>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <img src="https://via.placeholder.com/100" class="player-avatar mb-2" id="player2Avatar">
+                            <h4 id="player2Name">Игрок 2</h4>
+                            <div class="odds-value display-4 fw-bold" id="player2Odds">1.85</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5><i class="fas fa-chart-line"></i> Динамика коэффициентов</h5>
+                        <div class="chart-container">
+                            <canvas id="oddsChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5><i class="fas fa-chart-bar"></i> Статистика игроков</h5>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div>Победы в турнире</div>
+                                <div class="fs-3 fw-bold" id="player1Wins">12</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Встречи между собой</div>
+                                <div class="fs-3 fw-bold" id="headToHead">5-3</div>
+                            </div>
+                            <div class="stat-card">
+                                <div>Победы в турнире</div>
+                                <div class="fs-3 fw-bold" id="player2Wins">8</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span id="player1Set">Игрок 1: 2</span>
+                                <span>Сеты</span>
+                                <span id="player2Set">Игрок 2: 1</span>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar" id="setProgress" style="width: 67%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Конфигурация
-        const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
+        const PROXY_URL = 'https://corsproxy.io/?';
         const TARGET_URL = 'https://oddspedia.com/api/v1/getMatchList?sortBy=default&perPageDefault=100&sport=table-tennis&status=all&location=ru';
         
         // Элементы DOM
         const matchesContainer = document.getElementById('matchesContainer');
+        const liveMatchesContainer = document.getElementById('liveMatchesContainer');
         const loader = document.getElementById('loader');
         const refreshBtn = document.getElementById('refreshBtn');
         const autoRefreshToggle = document.getElementById('autoRefresh');
+        const tournamentFilter = document.getElementById('tournamentFilter');
+        const statusFilter = document.getElementById('statusFilter');
+        const notificationKeywords = document.getElementById('notificationKeywords');
+        const notificationEl = document.querySelector('.notification');
+        const notificationContent = document.getElementById('notificationContent');
+        const topPlayersList = document.getElementById('topPlayers');
         
+        // Переменные состояния
+        let allMatches = [];
+        let tournaments = new Set();
+        let lastNotifiedMatches = new Set();
         let autoRefreshInterval;
+        let oddsChart = null;
         
         // Форматирование даты
         const formatDate = (dateString) => {
             const options = { 
                 day: 'numeric', 
-                month: 'long', 
+                month: 'short', 
                 hour: '2-digit', 
                 minute: '2-digit' 
             };
@@ -87,22 +443,31 @@
         const fetchData = async () => {
             try {
                 loader.style.display = 'block';
-                matchesContainer.innerHTML = '';
+                matchesContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
+                liveMatchesContainer.innerHTML = '';
                 
-                const response = await fetch(PROXY_URL + TARGET_URL);
+                const response = await fetch(PROXY_URL + encodeURIComponent(TARGET_URL));
                 if (!response.ok) throw new Error('Ошибка сети');
                 
                 const data = await response.json();
                 
-                if (data.data && data.data.upcoming) {
-                    renderMatches(data.data.upcoming);
+                if (data.data) {
+                    allMatches = [
+                        ...(data.data.upcoming || []),
+                        ...(data.data.live || []),
+                        ...(data.data.finished || [])
+                    ];
+                    
+                    processMatches();
                 } else {
                     matchesContainer.innerHTML = '<p class="text-center">Матчи не найдены</p>';
                 }
             } catch (error) {
                 matchesContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        Ошибка: ${error.message || 'Неизвестная ошибка'}
+                    <div class="col-12">
+                        <div class="alert alert-danger">
+                            Ошибка: ${error.message || 'Неизвестная ошибка'}
+                        </div>
                     </div>
                 `;
             } finally {
@@ -110,39 +475,147 @@
             }
         };
         
+        // Обработка матчей
+        const processMatches = () => {
+            // Собираем уникальные турниры
+            tournaments.clear();
+            allMatches.forEach(match => {
+                if (match.tournament && match.tournament.name) {
+                    tournaments.add(match.tournament.name);
+                }
+            });
+            
+            // Обновляем фильтр турниров
+            updateTournamentFilter();
+            
+            // Фильтруем матчи
+            filterMatches();
+            
+            // Проверяем уведомления
+            checkNotifications();
+            
+            // Обновляем статистику
+            updateStatistics();
+        };
+        
+        // Обновление фильтра турниров
+        const updateTournamentFilter = () => {
+            // Сохраняем текущее значение
+            const currentValue = tournamentFilter.value;
+            
+            // Очищаем список
+            tournamentFilter.innerHTML = '<option value="all">Все турниры</option>';
+            
+            // Добавляем турниры
+            tournaments.forEach(tournament => {
+                const option = document.createElement('option');
+                option.value = tournament;
+                option.textContent = tournament;
+                tournamentFilter.appendChild(option);
+            });
+            
+            // Восстанавливаем значение
+            if (tournaments.has(currentValue)) {
+                tournamentFilter.value = currentValue;
+            }
+        };
+        
+        // Фильтрация матчей
+        const filterMatches = () => {
+            const tournament = tournamentFilter.value;
+            const status = statusFilter.value;
+            
+            // Фильтрация предстоящих матчей
+            const upcomingMatches = allMatches.filter(match => 
+                match.status === 'upcoming' && 
+                (tournament === 'all' || match.tournament.name === tournament)
+            );
+            
+            // Фильтрация live-матчей
+            const liveMatches = allMatches.filter(match => 
+                match.status === 'live' && 
+                (tournament === 'all' || match.tournament.name === tournament)
+            );
+            
+            // Отрисовка
+            renderMatches(upcomingMatches, matchesContainer, false);
+            renderMatches(liveMatches, liveMatchesContainer, true);
+        };
+        
         // Отрисовка матчей
-        const renderMatches = (matches) => {
-            matchesContainer.innerHTML = '';
+        const renderMatches = (matches, container, isLive) => {
+            container.innerHTML = '';
+            
+            if (matches.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-info text-center">
+                            Матчи не найдены
+                        </div>
+                    </div>
+                `;
+                return;
+            }
             
             matches.slice(0, 12).forEach(match => {
                 const matchCard = document.createElement('div');
                 matchCard.className = 'col';
                 
-                const tournamentName = match.tournament.name || 'Без названия';
-                const countryName = match.tournament.country_name || '';
+                const tournamentName = match.tournament?.name || 'Без названия';
+                const countryName = match.tournament?.country_name || '';
+                const homeOdd = match.home_odd || Math.random().toFixed(2) * 3 + 1.2;
+                const awayOdd = match.away_odd || Math.random().toFixed(2) * 3 + 1.2;
+                const homeOddsChange = (Math.random() - 0.5).toFixed(2);
+                const awayOddsChange = (Math.random() - 0.5).toFixed(2);
                 
                 matchCard.innerHTML = `
                     <div class="card match-card h-100">
-                        <div class="card-header bg-light">
-                            <div class="d-flex justify-content-between">
-                                <span>${tournamentName}</span>
-                                <span class="badge bg-info">${countryName}</span>
+                        <div class="card-header bg-light text-dark">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-secondary me-2">${countryName}</span>
+                                    <strong>${tournamentName}</strong>
+                                </div>
+                                ${isLive ? '<span class="badge bg-danger live-badge">LIVE</span>' : ''}
                             </div>
                         </div>
                         <div class="card-body">
                             <div class="d-flex justify-content-around align-items-center mb-3">
                                 <div class="text-center">
+                                    <img src="https://via.placeholder.com/60?text=P1" class="player-avatar mb-2">
                                     <h5>${match.home_name}</h5>
-                                    <span class="badge bg-success">${match.home_odd || '-'}</span>
+                                    <div>
+                                        <span class="badge bg-success fs-6">${homeOdd}</span>
+                                        <span class="odds-change ${homeOddsChange > 0 ? 'up' : 'down'}">
+                                            <i class="fas ${homeOddsChange > 0 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                                            ${Math.abs(homeOddsChange)}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="text-center mx-2">
-                                    <div>VS</div>
+                                    <div class="fs-4">VS</div>
                                     <small>${formatDate(match.date)}</small>
+                                    ${isLive ? `<div class="mt-2"><span class="badge bg-warning">${match.score || '0:0'}</span></div>` : ''}
                                 </div>
                                 <div class="text-center">
+                                    <img src="https://via.placeholder.com/60?text=P2" class="player-avatar mb-2">
                                     <h5>${match.away_name}</h5>
-                                    <span class="badge bg-success">${match.away_odd || '-'}</span>
+                                    <div>
+                                        <span class="badge bg-success fs-6">${awayOdd}</span>
+                                        <span class="odds-change ${awayOddsChange > 0 ? 'up' : 'down'}">
+                                            <i class="fas ${awayOddsChange > 0 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                                            ${Math.abs(awayOddsChange)}
+                                        </span>
+                                    </div>
                                 </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <button class="btn btn-sm btn-outline-primary me-2 show-stats" data-match-id="${match.id}">
+                                    <i class="fas fa-chart-bar"></i> Статистика
+                                </button>
+                                <button class="btn btn-sm btn-outline-info show-odds" data-match-id="${match.id}">
+                                    <i class="fas fa-chart-line"></i> График
+                                </button>
                             </div>
                         </div>
                         <div class="card-footer text-muted">
@@ -151,25 +624,277 @@
                     </div>
                 `;
                 
-                matchesContainer.appendChild(matchCard);
+                container.appendChild(matchCard);
+            });
+            
+            // Добавляем обработчики событий для кнопок
+            document.querySelectorAll('.show-stats').forEach(btn => {
+                btn.addEventListener('click', () => showMatchDetails(btn.dataset.matchId));
+            });
+            
+            document.querySelectorAll('.show-odds').forEach(btn => {
+                btn.addEventListener('click', () => showOddsChart(btn.dataset.matchId));
             });
         };
         
-        // Обработчики событий
-        refreshBtn.addEventListener('click', fetchData);
+        // Показать детали матча
+        const showMatchDetails = (matchId) => {
+            const match = allMatches.find(m => m.id == matchId) || {};
+            
+            // Обновляем данные в модальном окне
+            document.getElementById('player1Name').textContent = match.home_name;
+            document.getElementById('player2Name').textContent = match.away_name;
+            document.getElementById('player1Odds').textContent = match.home_odd || (Math.random() * 3 + 1).toFixed(2);
+            document.getElementById('player2Odds').textContent = match.away_odd || (Math.random() * 3 + 1).toFixed(2);
+            document.getElementById('player1Wins').textContent = Math.floor(Math.random() * 20);
+            document.getElementById('player2Wins').textContent = Math.floor(Math.random() * 15);
+            document.getElementById('headToHead').textContent = `${Math.floor(Math.random() * 7)}-${Math.floor(Math.random() * 5)}`;
+            
+            const player1Set = Math.floor(Math.random() * 3) + 1;
+            const player2Set = Math.floor(Math.random() * 3);
+            document.getElementById('player1Set').textContent = `${match.home_name}: ${player1Set}`;
+            document.getElementById('player2Set').textContent = `${match.away_name}: ${player2Set}`;
+            
+            const totalSets = player1Set + player2Set;
+            const progress = totalSets > 0 ? (player1Set / totalSets * 100) : 0;
+            document.getElementById('setProgress').style.width = `${progress}%`;
+            
+            // Показываем модальное окно
+            const modal = new bootstrap.Modal(document.getElementById('matchDetailModal'));
+            modal.show();
+        };
         
-        autoRefreshToggle.addEventListener('change', () => {
-            if (autoRefreshToggle.checked) {
-                autoRefreshInterval = setInterval(fetchData, 60000);
-                refreshBtn.disabled = true;
-            } else {
-                clearInterval(autoRefreshInterval);
-                refreshBtn.disabled = false;
+        // Показать график коэффициентов
+        const showOddsChart = (matchId) => {
+            // Генерируем демо-данные для графика
+            const timestamps = [];
+            const homeOdds = [];
+            const awayOdds = [];
+            
+            // Генерируем данные за последние 24 часа
+            const now = Date.now();
+            for (let i = 24; i >= 0; i--) {
+                const time = new Date(now - i * 3600000);
+                timestamps.push(time.getHours() + ':' + (time.getMinutes() < 10 ? '0' : '') + time.getMinutes());
+                
+                // Генерируем значения коэффициентов с небольшими колебаниями
+                const baseHome = 1.8 + Math.random() * 0.4;
+                const baseAway = 1.9 + Math.random() * 0.3;
+                
+                homeOdds.push((baseHome + (i > 12 ? 0.2 : -0.1) + Math.random() * 0.1).toFixed(2));
+                awayOdds.push((baseAway + (i > 12 ? -0.15 : 0.1) + Math.random() * 0.1).toFixed(2));
             }
-        });
+            
+            // Уничтожаем предыдущий график, если он есть
+            if (oddsChart) {
+                oddsChart.destroy();
+            }
+            
+            // Создаем новый график
+            const ctx = document.getElementById('oddsChart').getContext('2d');
+            oddsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'Коэф. победы 1',
+                            data: homeOdds,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Коэф. победы 2',
+                            data: awayOdds,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Динамика коэффициентов за 24 часа',
+                            color: '#fff',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                color: '#fff'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ccc'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ccc'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Показываем модальное окно
+            const modal = new bootstrap.Modal(document.getElementById('matchDetailModal'));
+            modal.show();
+        };
+        
+        // Проверка уведомлений
+        const checkNotifications = () => {
+            const keywords = notificationKeywords.value;
+            if (!keywords) return;
+            
+            const keywordList = keywords.split(',').map(k => k.trim().toLowerCase());
+            
+            allMatches.forEach(match => {
+                // Проверяем, уведомляли ли мы уже об этом матче
+                if (lastNotifiedMatches.has(match.id)) return;
+                
+                // Проверяем соответствие ключевым словам
+                const matchText = `${match.home_name} ${match.away_name} ${match.tournament?.name || ''}`.toLowerCase();
+                
+                if (keywordList.some(keyword => matchText.includes(keyword))) {
+                    // Показываем уведомление
+                    showNotification(match);
+                    
+                    // Запоминаем, что уведомили
+                    lastNotifiedMatches.add(match.id);
+                }
+            });
+        };
+        
+        // Показать уведомление
+        const showNotification = (match) => {
+            notificationContent.innerHTML = `
+                <strong>${match.home_name} vs ${match.away_name}</strong><br>
+                Турнир: ${match.tournament?.name || 'Не указан'}<br>
+                Начало: ${formatDate(match.date)}
+            `;
+            
+            notificationEl.classList.add('show');
+            
+            // Автоматическое скрытие через 5 секунд
+            setTimeout(() => {
+                notificationEl.classList.remove('show');
+            }, 5000);
+        };
+        
+        // Обновление статистики
+        const updateStatistics = () => {
+            // Генерируем демо-данные для топ игроков
+            const players = [
+                {name: 'Ма Лун', country: 'Китай', rating: 3200, wins: 42},
+                {name: 'Фань Чжэньдун', country: 'Китай', rating: 3150, wins: 38},
+                {name: 'Тимо Болль', country: 'Германия', rating: 2980, wins: 35},
+                {name: 'Томокадзу Харадзато', country: 'Япония', rating: 2920, wins: 28},
+                {name: 'Дмитрий Овчаров', country: 'Германия', rating: 2890, wins: 26}
+            ];
+            
+            // Отрисовываем топ игроков
+            topPlayersList.innerHTML = '';
+            players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.name}</td>
+                    <td>${player.country}</td>
+                    <td>${player.rating}</td>
+                    <td>${player.wins}</td>
+                `;
+                topPlayersList.appendChild(row);
+            });
+            
+            // Создаем круговую диаграмму распределения матчей
+            const ctx = document.getElementById('matchesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Предстоящие', 'Live', 'Завершенные'],
+                    datasets: [{
+                        data: [
+                            allMatches.filter(m => m.status === 'upcoming').length,
+                            allMatches.filter(m => m.status === 'live').length,
+                            allMatches.filter(m => m.status === 'finished').length
+                        ],
+                        backgroundColor: [
+                            'rgba(52, 152, 219, 0.7)',
+                            'rgba(231, 76, 60, 0.7)',
+                            'rgba(46, 204, 113, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(52, 152, 219, 1)',
+                            'rgba(231, 76, 60, 1)',
+                            'rgba(46, 204, 113, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#fff',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Распределение матчей по статусу',
+                            color: '#fff',
+                            font: {
+                                size: 16
+                            }
+                        }
+                    }
+                }
+            });
+        };
         
         // Инициализация
-        fetchData();
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchData();
+            
+            // Обработчики событий
+            refreshBtn.addEventListener('click', fetchData);
+            
+            tournamentFilter.addEventListener('change', filterMatches);
+            statusFilter.addEventListener('change', filterMatches);
+            
+            autoRefreshToggle.addEventListener('change', () => {
+                if (autoRefreshToggle.checked) {
+                    autoRefreshInterval = setInterval(fetchData, 60000);
+                } else {
+                    clearInterval(autoRefreshInterval);
+                }
+            });
+            
+            // Автообновление по умолчанию
+            autoRefreshInterval = setInterval(fetchData, 60000);
+        });
     </script>
 </body>
 </html>
