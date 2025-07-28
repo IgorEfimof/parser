@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Ваши стили остаются без изменений */
         :root {
             --primary: #3498db;
             --secondary: #2c3e50;
@@ -413,10 +414,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Конфигурация
-        const PROXY_URL = 'https://corsproxy.io/?';
-        const TARGET_URL = 'https://oddspedia.com/api/v1/getMatchList?sortBy=default&perPageDefault=100&sport=table-tennis&status=all&location=ru';
-        
         // Элементы DOM
         const matchesContainer = document.getElementById('matchesContainer');
         const liveMatchesContainer = document.getElementById('liveMatchesContainer');
@@ -448,6 +445,62 @@
             return new Date(dateString).toLocaleString('ru-RU', options);
         };
         
+        // Генерация mock-данных
+        const generateMockData = () => {
+            const countries = ['Китай', 'Германия', 'Япония', 'Южная Корея', 'Швеция', 'Франция'];
+            const players = [
+                'Ма Лун', 'Фань Чжэньдун', 'Тимо Болль', 
+                'Дмитрий Овчаров', 'Томокадзу Харадзато', 'Коки Нива',
+                'Ли Шан', 'Ван Чуцин', 'Линь Гаоюань', 'Хуго Кальдерно'
+            ];
+            const tournamentsList = [
+                'Чемпионат Мира', 'Кубок Азии', 'Европейский турнир', 
+                'Олимпийские игры', 'Турнир Большого Шлема', 'Кубок Чемпионов'
+            ];
+            
+            const matches = [];
+            const now = new Date();
+            
+            // Генерация предстоящих матчей
+            for (let i = 0; i < 8; i++) {
+                const date = new Date(now.getTime() + (i + 1) * 24 * 60 * 60 * 1000);
+                matches.push({
+                    id: `upcoming_${i}`,
+                    home_name: players[Math.floor(Math.random() * players.length)],
+                    away_name: players[Math.floor(Math.random() * players.length)],
+                    date: date.toISOString(),
+                    status: 'upcoming',
+                    tournament: {
+                        name: tournamentsList[Math.floor(Math.random() * tournamentsList.length)],
+                        country_name: countries[Math.floor(Math.random() * countries.length)]
+                    },
+                    home_odd: (1.5 + Math.random() * 2).toFixed(2),
+                    away_odd: (1.5 + Math.random() * 2).toFixed(2)
+                });
+            }
+            
+            // Генерация live-матчей
+            for (let i = 0; i < 4; i++) {
+                const date = new Date(now.getTime() - (i + 1) * 30 * 60 * 1000);
+                matches.push({
+                    id: `live_${i}`,
+                    home_name: players[Math.floor(Math.random() * players.length)],
+                    away_name: players[Math.floor(Math.random() * players.length)],
+                    date: date.toISOString(),
+                    status: 'live',
+                    score: `${Math.floor(Math.random() * 3)}:${Math.floor(Math.random() * 3)}`,
+                    tournament: {
+                        name: tournamentsList[Math.floor(Math.random() * tournamentsList.length)],
+                        country_name: countries[Math.floor(Math.random() * countries.length)]
+                    },
+                    home_odd: (1.5 + Math.random() * 2).toFixed(2),
+                    away_odd: (1.5 + Math.random() * 2).toFixed(2)
+                });
+            }
+            
+            return matches;
+        };
+        
         // Получение данных
         const fetchData = async () => {
             try {
@@ -455,34 +508,13 @@
                 matchesContainer.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border"></div></div>';
                 liveMatchesContainer.innerHTML = '';
                 
-                const response = await fetch(PROXY_URL + encodeURIComponent(TARGET_URL));
-                if (!response.ok) throw new Error('Ошибка сети');
+                // Имитация задержки сети
+                await new Promise(resolve => setTimeout(resolve, 800));
                 
-                const data = await response.json();
+                // Используем mock-данные
+                allMatches = generateMockData();
+                processMatches();
                 
-                if (data.data) {
-                    allMatches = [
-                        ...(data.data.upcoming || []),
-                        ...(data.data.live || []),
-                        ...(data.data.finished || [])
-                    ];
-                    
-                    // Добавляем тестовые live-матчи для демонстрации
-                    if (!data.data.live || data.data.live.length === 0) {
-                        if (data.data.upcoming && data.data.upcoming.length > 0) {
-                            const testLiveMatch = JSON.parse(JSON.stringify(data.data.upcoming[0]));
-                            testLiveMatch.status = 'live';
-                            testLiveMatch.score = '0:0';
-                            testLiveMatch.id = 'test_live_' + Date.now();
-                            testLiveMatch.tournament = testLiveMatch.tournament || { name: "Турнир Live" };
-                            allMatches.push(testLiveMatch);
-                        }
-                    }
-                    
-                    processMatches();
-                } else {
-                    matchesContainer.innerHTML = '<p class="text-center">Матчи не найдены</p>';
-                }
             } catch (error) {
                 matchesContainer.innerHTML = `
                     <div class="col-12">
@@ -498,15 +530,11 @@
         
         // Обработка матчей
         const processMatches = () => {
-            // Собираем уникальные турниры из ВСЕХ матчей
+            // Собираем уникальные турниры
             tournaments.clear();
             allMatches.forEach(match => {
-                // Исправление: учитываем live-матчи
                 if (match.tournament && match.tournament.name) {
                     tournaments.add(match.tournament.name);
-                } else if (match.league) {
-                    // Для live-матчей информация может быть в другом поле
-                    tournaments.add(match.league.name);
                 }
             });
             
@@ -553,17 +581,13 @@
             // Фильтрация предстоящих матчей
             const upcomingMatches = allMatches.filter(match => 
                 match.status === 'upcoming' && 
-                (tournament === 'all' || 
-                 (match.tournament && match.tournament.name === tournament) ||
-                 (match.league && match.league.name === tournament))
+                (tournament === 'all' || match.tournament.name === tournament)
             );
             
             // Фильтрация live-матчей
             const liveMatches = allMatches.filter(match => 
                 match.status === 'live' && 
-                (tournament === 'all' || 
-                 (match.tournament && match.tournament.name === tournament) ||
-                 (match.league && match.league.name === tournament))
+                (tournament === 'all' || match.tournament.name === tournament)
             );
             
             // Отрисовка
@@ -586,16 +610,10 @@
                 return;
             }
             
-            matches.slice(0, 12).forEach(match => {
+            matches.forEach(match => {
                 const matchCard = document.createElement('div');
                 matchCard.className = 'col';
                 
-                // Исправление: обработка live-матчей
-                const tournamentName = match.tournament?.name || match.league?.name || 'Турнир';
-                const countryName = match.tournament?.country_name || match.league?.cc || '';
-                
-                const homeOdd = match.home_odd || (Math.random() * 3 + 1.2).toFixed(2);
-                const awayOdd = match.away_odd || (Math.random() * 3 + 1.2).toFixed(2);
                 const homeOddsChange = (Math.random() - 0.5).toFixed(2);
                 const awayOddsChange = (Math.random() - 0.5).toFixed(2);
                 
@@ -604,8 +622,8 @@
                         <div class="card-header bg-light text-dark">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <span class="tournament-badge">${tournamentName}</span>
-                                    ${countryName ? `<span class="badge bg-secondary">${countryName}</span>` : ''}
+                                    <span class="tournament-badge">${match.tournament.name}</span>
+                                    <span class="badge bg-secondary">${match.tournament.country_name}</span>
                                 </div>
                                 ${isLive ? '<span class="badge bg-danger live-badge">LIVE</span>' : ''}
                             </div>
@@ -613,10 +631,10 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-around align-items-center mb-3">
                                 <div class="text-center">
-                                    <img src="https://via.placeholder.com/60?text=P1" class="player-avatar mb-2">
+                                    <img src="https://via.placeholder.com/60?text=${match.home_name.charAt(0)}" class="player-avatar mb-2">
                                     <h5>${match.home_name}</h5>
                                     <div>
-                                        <span class="badge bg-success fs-6">${homeOdd}</span>
+                                        <span class="badge bg-success fs-6">${match.home_odd}</span>
                                         <span class="odds-change ${homeOddsChange > 0 ? 'up' : 'down'}">
                                             <i class="fas ${homeOddsChange > 0 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
                                             ${Math.abs(homeOddsChange)}
@@ -629,10 +647,10 @@
                                     ${isLive ? `<div class="mt-2"><span class="badge bg-warning">${match.score || '0:0'}</span></div>` : ''}
                                 </div>
                                 <div class="text-center">
-                                    <img src="https://via.placeholder.com/60?text=P2" class="player-avatar mb-2">
+                                    <img src="https://via.placeholder.com/60?text=${match.away_name.charAt(0)}" class="player-avatar mb-2">
                                     <h5>${match.away_name}</h5>
                                     <div>
-                                        <span class="badge bg-success fs-6">${awayOdd}</span>
+                                        <span class="badge bg-success fs-6">${match.away_odd}</span>
                                         <span class="odds-change ${awayOddsChange > 0 ? 'up' : 'down'}">
                                             <i class="fas ${awayOddsChange > 0 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
                                             ${Math.abs(awayOddsChange)}
@@ -802,7 +820,7 @@
                 if (lastNotifiedMatches.has(match.id)) return;
                 
                 // Проверяем соответствие ключевым словам
-                const matchText = `${match.home_name} ${match.away_name} ${match.tournament?.name || match.league?.name || ''}`.toLowerCase();
+                const matchText = `${match.home_name} ${match.away_name} ${match.tournament.name}`.toLowerCase();
                 
                 if (keywordList.some(keyword => matchText.includes(keyword))) {
                     // Показываем уведомление
@@ -818,7 +836,7 @@
         const showNotification = (match) => {
             notificationContent.innerHTML = `
                 <strong>${match.home_name} vs ${match.away_name}</strong><br>
-                Турнир: ${match.tournament?.name || match.league?.name || 'Не указан'}<br>
+                Турнир: ${match.tournament.name}<br>
                 Начало: ${formatDate(match.date)}
             `;
             
